@@ -1,5 +1,4 @@
 from pathlib import Path
-import pathlib
 
 import numpy as np
 from matplotlib import colors, pyplot as plt
@@ -153,11 +152,11 @@ def draw_many_surfaces(ls_measures, phaso_measures, differences):
 
 if __name__ == '__main__':
 
-    PATH_TO_MEASUREMENT = r'experemental_results\2023-10-20'
+    PATH_TO_MEASUREMENT = r'experimental_results\2023-10-20'
 
-    PATH_TO_PHASO_CALIBRATION = r'experemental_results\calibrated_data_phase4.json'
+    PATH_TO_PHASO_CALIBRATION = r'experimental_results\calibrated_data_phase4.json'
 
-    path_to_date_folder = pathlib.Path(PATH_TO_MEASUREMENT)
+    path_to_date_folder = Path(PATH_TO_MEASUREMENT)
     phaso_calibration = load_json_file(PATH_TO_PHASO_CALIBRATION)
 
     measurements_paths = []

@@ -4,11 +4,7 @@ import json
 import numpy as np
 from matplotlib import pyplot as plt
 
-from icp import best_fit_transform, icp
-from simpleicp import PointCloud, SimpleICP
-
-STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\User\source\repos\helleb0re\structured-light-python"
-#STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\Caesar\source\repos\helleb0re\structured-light-python"
+from config import STRUCTURE_LIGHT_PYTHON_PATH
 
 sys.path.append(STRUCTURE_LIGHT_PYTHON_PATH)
 
@@ -55,9 +51,9 @@ def rigid_transform_3D(A: np.ndarray, B: np.ndarray):
 
 if __name__ == '__main__':
 
-    PATH_TO_CAMERA_CALIBRATION = r'experemental_results\calibrated_data_phase4.json'
+    PATH_TO_CAMERA_CALIBRATION = r'experimental_results\calibrated_data_phase4.json'
 
-    PATH_TO_CROSS_CALIBRATION = r'experemental_results\2023-10-19\2023-10-19_15-29-09\cross_calibration_measurement_2023-10-19_17-29-21.json'
+    PATH_TO_CROSS_CALIBRATION = r'experimental_results\2023-10-19\2023-10-19_15-29-09\cross_calibration_measurement_2023-10-19_17-29-21.json'
 
     cams_calibration = load_json_file(PATH_TO_CAMERA_CALIBRATION)
 
@@ -94,13 +90,7 @@ if __name__ == '__main__':
         k = k + 1
         error = np.max((rms1, rms2))
 
-    T, R, t = best_fit_transform(cams_triang_points, ls_sensor_points)
-
-    R2, t2 = rigid_transform_3D(cams_triang_points, ls_sensor_points)
-
-    T3, dis, i = icp(cams_triang_points, ls_sensor_points, T)
-    R = T[:3,:3]
-    t = T[:3,3]
+    R, t = rigid_transform_3D(cams_triang_points, ls_sensor_points)
 
     # # Create point cloud objects
     # X_mov = pd.DataFrame({
@@ -125,8 +115,9 @@ if __name__ == '__main__':
     # R = H[:3,:3]
     # t = H[:3,3].reshape((3,1))
 
-    cams_triang_transformed_points = T3.dot(np.hstack((cams_triang_points, np.ones((cams_triang_points.shape[0], 1)))).T)
+    H = np.hstack((R, t))
 
+    cams_triang_transformed_points = H.dot(np.hstack((cams_triang_points, np.ones((cams_triang_points.shape[0], 1)))).T)
 
     # k = 1
     # error = 1000

@@ -7,11 +7,7 @@ from typing import List, Dict
 import cv2
 
 from common_functions import get_now_time
-
-IPCT_TEST_SETUP_PATH = r"D:\ipct_test_setup\IPCT_test_setup" 
-#IPCT_TEST_SETUP_PATH = r"C:\Users\Caesar\source\repos\ipct_test_setup\IPCT_test_setup"
-STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\User\source\repos\helleb0re\structured-light-python"
-#STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\Caesar\source\repos\helleb0re\structured-light-python"
+from config import IPCT_TEST_SETUP_PATH, STRUCTURE_LIGHT_PYTHON_PATH, RESULTS_PATH, SERVO_PORT, SENSOR_PORT, PHASE_CAMS_TYPE, PHASE_CAMS_SERIAL_NUMBERS, STEREO_CAMS_TYPE, STEREO_CAMS_SERIAL_NUMBERS
 
 sys.path.append(IPCT_TEST_SETUP_PATH)
 
@@ -225,26 +221,11 @@ def main_measurement_loop(
     
 
 if __name__ == "__main__":
-    # Папка для сохранения результатов
-    RESULTS_PATH = "experemental_results"
-
     # Тип результата измерения для лазерного датчика
     RESULTS_NAME = "ls_measurement"
 
     # Формат сохранения изображений
     IMAGE_FORMAT = ".png"
-
-    # Имена портов для подключения к сервомашинам и лазерному датчику
-    SERVO_PORT = "COM3"
-    SENSOR_PORT = "COM4"
-
-    # Тип камер стереосистемы и фазограмметрической системы
-    STEREO_CAMS_TYPE = 'baumer'
-    PHASE_CAMS_TYPE = 'baumer'
-
-    # Серийные номера камер стереосистемы и фазограмметрической системы
-    STEREO_CAMS_SERIAL_NUMBERS = ['700005466452', '700005466457']
-    PHASE_CAMS_SERIAL_NUMBERS = ['700007464735', '700007464734']
 
     STEREO_CAMS_EXPOSURES = [100_000, 100_000] # us
     STEREO_CAMS_GAINS = [1.3, 1.3]

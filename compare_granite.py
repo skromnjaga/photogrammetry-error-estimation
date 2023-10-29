@@ -1,5 +1,4 @@
 from pathlib import Path
-import pathlib
 
 import numpy as np
 from matplotlib import colors, pyplot as plt
@@ -88,6 +87,22 @@ def draw_surface_by_contours(ls_sensor_points, phase_points, ls_distance_to_plan
     ax2.invert_yaxis()
     plt.grid()
 
+    plt.show()
+
+
+def draw_rms_distance_to_plane(std_ls, std_phaso):
+    rng = np.array(list(range(len(std_ls)))) + 1
+
+    plt.rcParams.update({'font.size': 12})
+
+    [plt.bar(rng, std_ls, align='edge', width=-0.3, label='Laser sensor'), plt.bar(rng, std_phaso, align='edge', width=0.3, label='Phasogrammetry')]
+
+    plt.xlabel('Measurement number')
+    plt.yticks(range(1, 10))
+    plt.ylabel('RMS distance to fit plane, $ \mu $m')
+    plt.yticks(range(0, 65, 5))
+    plt.grid()
+    plt.legend()
     plt.show()
 
 
@@ -180,76 +195,50 @@ def compare_granite(path_to_measurement, calibration_data):
 
 if __name__ == '__main__':
 
-    # PATH_TO_MEASUREMENT = r'experemental_results\2023-10-19'
+    PATH_TO_MEASUREMENT = r'experimental_results\2023-10-19'
 
-    # PATH_TO_PHASO_CALIBRATION = r'experemental_results\calibrated_data_phase4.json'
+    PATH_TO_PHASO_CALIBRATION = r'experimental_results\calibrated_data_phase4.json'
 
-    # phaso_calibration = load_json_file(PATH_TO_PHASO_CALIBRATION)
+    phaso_calibration = load_json_file(PATH_TO_PHASO_CALIBRATION)
     
-    # path_to_date_folder = pathlib.Path(PATH_TO_MEASUREMENT)
+    path_to_date_folder = Path(PATH_TO_MEASUREMENT)
 
-    # measurements_paths = []
+    measurements_paths = []
 
-    # for measurement_folder in path_to_date_folder.iterdir():
-    #     if measurement_folder.is_dir():
-    #         measurements_paths.append(measurement_folder)
+    for measurement_folder in path_to_date_folder.iterdir():
+        if measurement_folder.is_dir():
+            measurements_paths.append(measurement_folder)
             
-    # std_ls = []
-    # std_phaso = []
-    # differences = []
+    std_ls = []
+    std_phaso = []
+    differences = []
 
-    # for i, path in enumerate(measurements_paths):
-    #     print(f'Обрабатываем поверхность {i+1} из {len(measurements_paths)}')
-    #     try:
-    #         ls_sensor_points, phase_points_transformed, ls_distance_to_plane, phaso_distance_to_plane, phase_errors = compare_granite(path, phaso_calibration)
+    for i, path in enumerate(measurements_paths):
+        print(f'Обрабатываем поверхность {i+1} из {len(measurements_paths)}')
+        try:
+            ls_sensor_points, phase_points_transformed, ls_distance_to_plane, phaso_distance_to_plane, phase_errors = compare_granite(path, phaso_calibration)
 
-    #         distance_errors = calculate_distance_difference(ls_sensor_points, phase_points_transformed)
+            distance_errors = calculate_distance_difference(ls_sensor_points, phase_points_transformed)
 
-    #         print(f'Distance deviation mean = {np.mean(distance_errors[:,2]):.4f} mm')
-    #         print(f'Distance deviation max = {np.max(distance_errors[:,2]):.4f} mm')
-    #         print(f'Distance deviation std = {np.std(distance_errors[:,2]):.4f} mm\n')
+            print(f'Distance deviation mean = {np.mean(distance_errors[:,2]):.4f} mm')
+            print(f'Distance deviation max = {np.max(distance_errors[:,2]):.4f} mm')
+            print(f'Distance deviation std = {np.std(distance_errors[:,2]):.4f} mm\n')
 
-    #         std_ls.append(ls_distance_to_plane)
-    #         std_phaso.append(phaso_distance_to_plane)
-    #         differences.append(distance_errors)
+            std_ls.append(ls_distance_to_plane)
+            std_phaso.append(phaso_distance_to_plane)
+            differences.append(distance_errors)
 
-    #         # draw_surface_by_contours(ls_sensor_points, phase_points_transformed, ls_distance_to_plane, phaso_distance_to_plane, phase_errors, distance_errors)
-    #     except Exception as ex:
-    #         print(ex)
+            # draw_surface_by_contours(ls_sensor_points, phase_points_transformed, ls_distance_to_plane, phaso_distance_to_plane, phase_errors, distance_errors)
+        except Exception as ex:
+            print(ex)
 
-    # # # std_ls = [np.std(el) for el in std_ls]
-    # # # std_phaso = [np.std(el) for el in std_phaso]
-    # differences = np.array([el[:,2] for el in differences])
+    std_ls = np.array([np.std(el) for el in std_ls])
+    std_phaso = np.array([np.std(el) for el in std_phaso])
+    differences = [el[:,2] for el in differences]
+    std_dif = np.array([np.std(el) for el in differences])
 
-    std_ls = 10**3 * np.array([0.04154948373051659, 0.04093847799902943, 0.04047180455900982, 0.0397561060186825, 0.03878952790256108, 0.03971447983898574, 0.039164994718468925, 0.03875863027479726, 0.03952797826345427, 0.03852526148755849])
-    std_phaso = 10**3 * np.array([0.04529797349631641, 0.046264603765972856, 0.04623559404760039, 0.04660295780556167, 0.04695086276563886, 0.04671086983830089, 0.04662471865351157, 0.04758088632103628, 0.047386267234966035, 0.0464112211122935])
-    differences = 10**3 * np.array([0.1185620736003126, 0.09953139560533236, 0.09401298212294475, 0.09989253274995802, 0.09314984074933819, 0.08293346773764969, 0.0908879814625155, 0.08104240046731885, 0.08342360315531197, 0.0908507353148522])
+    # std_ls = 10**3 * np.array([0.04154948373051659, 0.04093847799902943, 0.04047180455900982, 0.0397561060186825, 0.03878952790256108, 0.03971447983898574, 0.039164994718468925, 0.03875863027479726, 0.03952797826345427, 0.03852526148755849])
+    # std_phaso = 10**3 * np.array([0.04529797349631641, 0.046264603765972856, 0.04623559404760039, 0.04660295780556167, 0.04695086276563886, 0.04671086983830089, 0.04662471865351157, 0.04758088632103628, 0.047386267234966035, 0.0464112211122935])
+    # differences = 10**3 * np.array([0.1185620736003126, 0.09953139560533236, 0.09401298212294475, 0.09989253274995802, 0.09314984074933819, 0.08293346773764969, 0.0908879814625155, 0.08104240046731885, 0.08342360315531197, 0.0908507353148522])
 
-    rng = np.array(list(range(len(std_ls)))) + 1
-
-    plt.rcParams.update({'font.size': 12})
-
-    [plt.bar(rng, std_ls, align='edge', width=-0.3, label='Laser sensor'), plt.bar(rng, std_phaso, align='edge', width=0.3, label='Phasogrammetry')]
-    # [plt.bar(rng, differences, align='edge', width = 0.2)]
-
-    plt.xlabel('Measurement number')
-    plt.yticks(range(1, 10))
-    plt.ylabel('RMS distance to fit plane, $ \mu $m')
-    plt.yticks(range(0, 65, 5))
-    plt.grid()
-    plt.legend()
-    plt.show()
-
-    # differences = differences[1:] * 10**3 # в мкм
-
-    # plt.rcParams.update({'font.size': 16})
-    # # plt.boxplot(differences)
-    # rng = list(range(len(differences)))
-    # means = [np.mean(dif) for dif in differences]
-    # plt.errorbar(rng, means, np.array([[np.mean(dif) + np.max(dif), np.mean(dif)-np.min(dif)] for dif in differences]).T, fmt='.b', ecolor='blue', lw=1)
-    # plt.errorbar(rng, means, [np.std(dif) for dif in differences], fmt='ob', lw=3)
-    # plt.gca().yaxis.set_major_locator(plt.MultipleLocator(25))
-    # plt.xlabel('Measurement number')
-    # plt.ylabel('Distance to fit plane, $ \mu $m')
-    # plt.grid()
-    # plt.show()
+    draw_rms_distance_to_plane(std_ls * 10**3, std_phaso * 10**3)

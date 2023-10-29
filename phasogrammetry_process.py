@@ -7,13 +7,10 @@ from scipy import linalg
 from matplotlib import pyplot as plt
 
 from common_functions import get_measurements_paths, get_now_time, load_json_file
-
-STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\User\source\repos\helleb0re\structured-light-python"
-# STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\Caesar\source\repos\helleb0re\structured-light-python"
+from config import STRUCTURE_LIGHT_PYTHON_PATH, RESULTS_PATH
 
 sys.path.append(STRUCTURE_LIGHT_PYTHON_PATH)
 
-import config as phase_meas_system_config
 from fpp_structures import FPPMeasurement, PhaseShiftingAlgorithm
 from processing import calculate_phase_for_fppmeasurement, create_polygon, process_fppmeasurement_with_phasogrammetry, get_phase_field_ROI, get_phase_field_LUT, triangulate_points
 from utils import get_images_from_config, load_fpp_measurements
@@ -243,8 +240,6 @@ def process_with_phasogrammetry(
 
 if __name__ == '__main__':
 
-    PATH_TO_MEASUREMENTS = 'experemental_results/'
-
     PATH_TO_CALIBRATION = r'experemental_results/calibrated_data_phase4.json'
 
     RESULT_NAME = 'phasogrammetry_measurement'
@@ -261,7 +256,7 @@ if __name__ == '__main__':
 
     REPROJECTION_ERROR = 1.0 # pixel
 
-    measurements_paths = get_measurements_paths(PATH_TO_MEASUREMENTS, SKIP_FOLDERS_WITH_RESULTS, RESULT_NAME)
+    measurements_paths = get_measurements_paths(RESULTS_PATH, SKIP_FOLDERS_WITH_RESULTS, RESULT_NAME)
 
     print(f'Найдено {len(measurements_paths)} папок с измерениями...')
 
