@@ -90,27 +90,13 @@ def compare_stereo(phaso_path, stereo_path, calibration_data):
     R = np.array(calibration_data['RWorld'])
     t = np.array(calibration_data['TWorld']).reshape((3,1))
 
-    # Преобразуем измеренные точки с фазограмметрии в мировую систему координат
-    phase_points_transformed = np.hstack((R, t)).dot(np.hstack((phase_points_3d, np.ones((phase_points_3d.shape[0], 1)))).T)
-    phase_points_transformed = phase_points_transformed.T
-
-    # H1 = np.vstack([np.hstack((R, t)), np.array([0, 0, 0, 1])])
-
-    R, t, H = calculate_ICP(phase_points_transformed, stereo_points_3d, 2000.0)
-
-    # H = H @ H1
-
-    # Преобразуем измеренные точки с фазограмметрии в мировую систему координат
-    stereo_points_3d = H.dot(np.hstack((stereo_points_3d, np.ones((stereo_points_3d.shape[0], 1)))).T)
-    stereo_points_3d = stereo_points_3d.T
-
     print('\nОтфильтровываем выбросы в фазограмметрии по величине ошибки репроекции...')
     std_rprj1 = np.std(phase_errors[:,0])
     std_rprj2 = np.std(phase_errors[:,1])
     filter_condition = (phase_errors[:,0] < 3*std_rprj1) & (phase_errors[:,1] < 3*std_rprj2)
-    phase_points_transformed = phase_points_transformed[filter_condition,:]
+    phase_points_3d = phase_points_3d[filter_condition,:]
     phase_errors = phase_errors[filter_condition,:]
-    print(f'\n{phase_points_transformed.shape[0]} точек после фильтрации...')
+    print(f'\n{phase_points_3d.shape[0]} точек после фильтрации...')
 
     print('\nОтфильтровываем выбросы в стерео по величине ошибки репроекции...')
     std_rprj1 = np.std(reproj_errors1)
@@ -122,6 +108,26 @@ def compare_stereo(phaso_path, stereo_path, calibration_data):
     reproj_errors1 = reproj_errors1[condition]
     reproj_errors2 = reproj_errors2[condition]
     print(f'\n{stereo_points_3d.shape[0]} точек после фильтрации...')
+
+    # Преобразуем измеренные точки с фазограмметрии в мировую систему координат
+    phase_points_transformed = np.hstack((R, t)).dot(np.hstack((phase_points_3d, np.ones((phase_points_3d.shape[0], 1)))).T)
+    phase_points_transformed = phase_points_transformed.T
+
+    H = np.array([[0.978260, 0.050839, -0.201054, 489.272564],
+                   [-0.203827, 0.414448, -0.886954, 1252.394387],
+                   [0.038235, 0.908652, 0.415800, -469.539673],
+                   [0.000000, 0.000000, 0.000000, 1.000000]])
+    
+    # stereo_points_3d_transformed = H1.dot(np.hstack((stereo_points_3d, np.ones((stereo_points_3d.shape[0], 1)))).T)
+    # stereo_points_3d_transformed = stereo_points_3d_transformed.T
+
+    # R, t, H = calculate_ICP(phase_points_transformed, stereo_points_3d_transformed, 100.0)
+
+    # H = H @ H1
+
+    # Преобразуем измеренные точки с фазограмметрии в мировую систему координат
+    stereo_points_3d = H.dot(np.hstack((stereo_points_3d, np.ones((stereo_points_3d.shape[0], 1)))).T)
+    stereo_points_3d = stereo_points_3d[:3,:].T
 
     return phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2
 
@@ -174,7 +180,7 @@ if __name__ == '__main__':
 
     PATH_TO_STEREO_MEASUREMENT = r'experimental_results\stereo'
 
-    PATH_TO_PHASO_MEASUREMENT = r'experimental_results\2023-10-20'
+    PATH_TO_PHASO_MEASUREMENT = r'experimental_results\2023-10-23'
 
     PATH_TO_PHASO_CALIBRATION = r'experimental_results\calibrated_data_phase4.json'
 
@@ -189,14 +195,14 @@ if __name__ == '__main__':
 
     path_to_stereo_data_folder = Path(PATH_TO_STEREO_MEASUREMENT)
 
-    stereo_measurements_paths = list(path_to_stereo_data_folder.glob('stereo_photogrammetry_result_*.json'))
+    stereo_measurements_paths = list(path_to_stereo_data_folder.glob('result_*.json'))
 
     loaded_data = []
 
     for i, (phaso_path, stereo_path)  in enumerate(zip(phaso_measurements_paths, stereo_measurements_paths)):
         print(f'Обрабатываем поверхность {i+1} из {len(stereo_measurements_paths)}')
+        
         try:
-            
             phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2 = compare_stereo(phaso_path, stereo_path, phaso_calibration)
 
             distance_errors = calculate_distance_difference(stereo_points_3d, phase_points_transformed)
@@ -207,12 +213,14 @@ if __name__ == '__main__':
                 np.std(phase_errors[:,0]),
                 np.std(phase_errors[:,1]),
                 np.std(reproj_errors1), 
-                np.std(reproj_errors2), 
+                np.std(reproj_errors2),
+                np.std(distance_errors[:,2]),
                 phase_points_transformed,
                 phase_errors,
                 stereo_points_3d,
                 reproj_errors1,
-                reproj_errors2
+                reproj_errors2,
+                distance_errors,
             ])
 
             # if len(reproj_errors1) > 3000 and np.std(reproj_errors1) < 1:
@@ -232,7 +240,7 @@ if __name__ == '__main__':
             #     ax.invert_yaxis()
             #     plt.show()
 
-            draw_surface_by_contours(stereo_points_3d, phase_points_transformed, distance_errors)
+            # draw_surface_by_contours(stereo_points_3d, phase_points_transformed, distance_errors)
         except Exception as ex:
             print(ex)
             raise ex
@@ -244,14 +252,16 @@ if __name__ == '__main__':
         'phase_std_reproj2',
         'stereo_std_reproj1', 
         'stereo_std_reproj2',
+        'distance_std',
         'phase_points',
         'phase_errors', 
         'stereo_points', 
         'reproj1', 
-        'reproj2'
+        'reproj2',
+        'distance_errors'
     ))
 
-    df = df[(df.std_reproj1 < 1) & (df.std_reproj2 < 1)]
+    # df = df[(df.std_reproj1 < 1) & (df.std_reproj2 < 1)]
 
-    df.std_reproj1.hist()
+    df.distance_std.hist()
     plt.show()
