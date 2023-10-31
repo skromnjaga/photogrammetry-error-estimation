@@ -7,7 +7,7 @@ from typing import List, Dict
 import cv2
 
 from common_functions import get_now_time
-from config import IPCT_TEST_SETUP_PATH, STRUCTURE_LIGHT_PYTHON_PATH, RESULTS_PATH, SERVO_PORT, SENSOR_PORT, PHASE_CAMS_TYPE, PHASE_CAMS_SERIAL_NUMBERS, STEREO_CAMS_TYPE, STEREO_CAMS_SERIAL_NUMBERS
+from config2 import IPCT_TEST_SETUP_PATH, STRUCTURE_LIGHT_PYTHON_PATH, RESULTS_PATH, SERVO_PORT, SENSOR_PORT, PHASE_CAMS_TYPE, PHASE_CAMS_SERIAL_NUMBERS, STEREO_CAMS_TYPE, STEREO_CAMS_SERIAL_NUMBERS
 
 sys.path.append(IPCT_TEST_SETUP_PATH)
 
@@ -73,17 +73,17 @@ def init_experemental_setup():
     try:
         stereo_cameras = initialize_cameras(
             STEREO_CAMS_TYPE,
-            cam_to_found_number=2,
+            cam_to_found_number=len(STEREO_CAMS_SERIAL_NUMBERS),
             cameras_serial_numbers=STEREO_CAMS_SERIAL_NUMBERS
         ) 
     except Exception as ex:
         print(f'Ошибка поиска камер для стереосистемы: {ex}')
         exit(1)
 
-    for i in range(len(STEREO_CAMS_EXPOSURES)):
+    for i in range(len(STEREO_CAMS_SERIAL_NUMBERS)):
         stereo_cameras[i].exposure = STEREO_CAMS_EXPOSURES[i]
 
-    for i in range(len(STEREO_CAMS_GAINS)):
+    for i in range(len(STEREO_CAMS_SERIAL_NUMBERS)):
         stereo_cameras[i].gain = STEREO_CAMS_GAINS[i]
 
     # Включаем сохранение результатов в файл для фазограмметрической системы
@@ -140,24 +140,25 @@ def get_stereo_measurement(cameras: List[Camera], stereo_images_folder: str):
     '''
     Получает и сохраняет изображения с видеокамер стереосистемы в указанную папку
     '''
-    cv2.namedWindow('cam1', cv2.WINDOW_NORMAL)
-    cv2.namedWindow('cam2', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('cam1', 800, 600)
-    cv2.resizeWindow('cam2', 800, 600)
+    if len(cameras) > 0:
+        cv2.namedWindow('cam1', cv2.WINDOW_NORMAL)
+        cv2.namedWindow('cam2', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('cam1', 800, 600)
+        cv2.resizeWindow('cam2', 800, 600)
 
-    img1 = cameras[0].get_image()
-    img2 = cameras[1].get_image()
+        img1 = cameras[0].get_image()
+        img2 = cameras[1].get_image()
 
-    cv2.imshow('cam1', img1)
-    cv2.imshow('cam2', img2)
+        cv2.imshow('cam1', img1)
+        cv2.imshow('cam2', img2)
 
-    cv2.waitKey(1000)
+        cv2.waitKey(1000)
 
-    cv2.imwrite(os.path.join(stereo_images_folder, f'img1{IMAGE_FORMAT}'), img1)
-    cv2.imwrite(os.path.join(stereo_images_folder, f'img2{IMAGE_FORMAT}'), img2)
+        cv2.imwrite(os.path.join(stereo_images_folder, f'img1{IMAGE_FORMAT}'), img1)
+        cv2.imwrite(os.path.join(stereo_images_folder, f'img2{IMAGE_FORMAT}'), img2)
 
-    cv2.destroyWindow('cam1')
-    cv2.destroyWindow('cam2')
+        cv2.destroyWindow('cam1')
+        cv2.destroyWindow('cam2')
 
 
 def get_phasogrammetry_measurement(projector: Projector, cameras: List[Camera], phase_result_folder: str):
@@ -197,7 +198,7 @@ def main_measurement_loop(
                 max=MAXIMUM_POSITION
             )
 
-        projector.project_black_background()
+        projector.project_white_background()
 
         time.sleep(5)
 
@@ -234,13 +235,15 @@ if __name__ == "__main__":
     PHASE_CAMS_GAINS = [2.0, 2.0]
 
     # Параметры для расчета точек в которых будут производится измерения лазерным датчиком
-    # START_X = 80
-    # START_Y = 14
+    # Для имитатора
+    # START_X = 87
+    # START_Y = 17
     # START_S = 0
-    # END_X = 440
-    # END_Y = 374
+    # END_X = 452
+    # END_Y = 385
     # END_S = 1
 
+    # Для поверочной плиты
     START_X = 58
     START_Y = 17
     START_S = 0
