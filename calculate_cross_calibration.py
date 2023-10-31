@@ -4,7 +4,7 @@ import json
 import numpy as np
 from matplotlib import pyplot as plt
 
-from config import STRUCTURE_LIGHT_PYTHON_PATH
+from config2 import STRUCTURE_LIGHT_PYTHON_PATH
 
 sys.path.append(STRUCTURE_LIGHT_PYTHON_PATH)
 

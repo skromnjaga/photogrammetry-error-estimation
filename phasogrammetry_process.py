@@ -7,7 +7,7 @@ from scipy import linalg
 from matplotlib import pyplot as plt
 
 from common_functions import get_measurements_paths, get_now_time, load_json_file
-from config import STRUCTURE_LIGHT_PYTHON_PATH, RESULTS_PATH
+from config2 import STRUCTURE_LIGHT_PYTHON_PATH, RESULTS_PATH
 
 sys.path.append(STRUCTURE_LIGHT_PYTHON_PATH)
 
@@ -240,7 +240,7 @@ def process_with_phasogrammetry(
 
 if __name__ == '__main__':
 
-    PATH_TO_CALIBRATION = r'experemental_results/calibrated_data_phase4.json'
+    PATH_TO_CALIBRATION = r'experimental_results/calibrated_data_phase4.json'
 
     RESULT_NAME = 'phasogrammetry_measurement'
 
