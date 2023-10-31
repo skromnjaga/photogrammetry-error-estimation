@@ -3,8 +3,8 @@ IPCT_TEST_SETUP_PATH = r"D:\ipct_test_setup\IPCT_test_setup"
 # IPCT_TEST_SETUP_PATH = r"C:\Users\Caesar\source\repos\ipct_test_setup\IPCT_test_setup"
 
 # Путь к файлам проекта для проведения фазограмметрических измерений
-# STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\User\source\repos\helleb0re\structured-light-python"
-STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\Caesar\source\repos\helleb0re\structured-light-python"
+STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\User\source\repos\helleb0re\structured-light-python"
+# STRUCTURE_LIGHT_PYTHON_PATH = r"C:\Users\Caesar\source\repos\helleb0re\structured-light-python"
 
 # Папка для сохранения результатов
 RESULTS_PATH = "experimental_results"
