@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import colors, pyplot as plt
 
-from common_functions import calculate_ICP, calculate_distance_difference, load_json_file
+from common_functions import calculate_ICP, calculate_distance_difference, get_now_time, load_json_file
 
 
 def draw_surface_by_contours(ls_sensor_points, phase_points, distance_errors):
@@ -46,23 +46,7 @@ def draw_surface_by_contours(ls_sensor_points, phase_points, distance_errors):
     plt.show()
 
 
-def draw_surfaces_in_3D(ls_sensor_points, phase_points):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    ax.scatter(ls_sensor_points[:,0], ls_sensor_points[:,1], ls_sensor_points[:,2])
-    ax.scatter(phase_points[:,0], phase_points[:,1], phase_points[:,2])
-
-    ax.set_xlabel('X, mm')
-    ax.set_ylabel('Y, mm')
-    ax.set_zlabel('Z, mm')
-
-    ax.view_init(elev=-75, azim=-89)
-
-    plt.show()
-
-
-def compare_stereo(phaso_path, stereo_path, calibration_data):
+def compare_stereo_pair(phaso_path, stereo_path, calibration_data):
     # Загружаем данные фазограмметрического измерения
     phaso_measurement_path = Path(phaso_path)
     
@@ -86,22 +70,32 @@ def compare_stereo(phaso_path, stereo_path, calibration_data):
     print(f'\nЗагружено {phase_points_3d.shape[0]} точек измерения фазограмметрической системы')
     phaso_std_rprj1 = np.std(phase_errors[:,0])
     phaso_std_rprj2 = np.std(phase_errors[:,1])
-    print(f'\STD ошибки репроекции {phaso_std_rprj1: .3f} и {phaso_std_rprj2: .3f}')   
+    print(f'STD ошибки репроекции {phaso_std_rprj1: .3f} и {phaso_std_rprj2: .3f}')   
     
     print(f'\nЗагружено {stereo_points_3d.shape[0]} точек измерения стерео системы')
     stero_std_rprj1 = np.std(reproj_errors1)
     stero_std_rprj2 = np.std(reproj_errors2)
-    print(f'\STD ошибки репроекции {stero_std_rprj1: .3f} и {stero_std_rprj2: .3f}')
-
-    # Загружаем параметры для перевода в мировую систему координат (датчика)
-    R = np.array(calibration_data['RWorld'])
-    t = np.array(calibration_data['TWorld']).reshape((3,1))
+    print(f'STD ошибки репроекции {stero_std_rprj1: .3f} и {stero_std_rprj2: .3f}')
 
     print('\nОтфильтровываем выбросы в фазограмметрии по величине ошибки репроекции...')
     filter_condition = (phase_errors[:,0] < 3*phaso_std_rprj1) & (phase_errors[:,1] < 3*phaso_std_rprj2)
     phase_points_3d = phase_points_3d[filter_condition,:]
     phase_errors = phase_errors[filter_condition,:]
-    print(f'\n{phase_points_3d.shape[0]} точек после фильтрации...')
+    print(f'{phase_points_3d.shape[0]} точек после фильтрации...')
+
+    # Загружаем параметры для перевода в мировую систему координат (датчика)
+    R = np.array(calibration_data['RWorld'])
+    t = np.array(calibration_data['TWorld']).reshape((3,1))
+
+    # Преобразуем измеренные точки с фазограмметрии в мировую систему координат
+    phase_points_transformed = np.hstack((R, t)).dot(np.hstack((phase_points_3d, np.ones((phase_points_3d.shape[0], 1)))).T)
+    phase_points_transformed = phase_points_transformed.T
+
+    print('\nОтфильтровываем точки в фазограмметрии по пределам измерений...')
+    filter_condition = (phase_points_transformed[:,1] > 20) & (phase_points_transformed[:,2] > 10) & (phase_points_transformed[:,2] < 60)
+    phase_points_transformed = phase_points_transformed[filter_condition,:]
+    phase_errors = phase_errors[filter_condition,:]
+    print(f'{phase_points_transformed.shape[0]} точек после фильтрации...')
 
     print('\nОтфильтровываем выбросы в стерео по величине ошибки репроекции...')
     condition = (reproj_errors1 < 6*stero_std_rprj1) & (reproj_errors2 < 6*stero_std_rprj2)
@@ -110,80 +104,24 @@ def compare_stereo(phaso_path, stereo_path, calibration_data):
     stereo_points_3d = stereo_points_3d[condition, :]
     reproj_errors1 = reproj_errors1[condition]
     reproj_errors2 = reproj_errors2[condition]
-    print(f'\n{stereo_points_3d.shape[0]} точек после фильтрации...')
-
-    # Преобразуем измеренные точки с фазограмметрии в мировую систему координат
-    phase_points_transformed = np.hstack((R, t)).dot(np.hstack((phase_points_3d, np.ones((phase_points_3d.shape[0], 1)))).T)
-    phase_points_transformed = phase_points_transformed.T
+    print(f'{stereo_points_3d.shape[0]} точек после фильтрации...')
 
     if len(stereo_points_3d) == 0:
         return phase_points_transformed, phase_errors, None, reproj_errors1, reproj_errors2
 
-    # H = np.array([[0.978260, 0.050839, -0.201054, 489.272564],
-    #                [-0.203827, 0.414448, -0.886954, 1252.394387],
-    #                [0.038235, 0.908652, 0.415800, -469.539673],
-    #                [0.000000, 0.000000, 0.000000, 1.000000]])
-    
-    init_params = (64.920109, -11.462937, -3.051579, 487.680680, 1253.083990, 469.350445)
-
-    _, stereo_points_3d, _, _ = calculate_ICP(phase_points_transformed, stereo_points_3d, initial_params=init_params, max_overlap_distance=2000.0)
+    if CALCULATE_ICP:
+        _, stereo_points_3d, _, _ = calculate_ICP(phase_points_transformed, stereo_points_3d, initial_params=INIT_PARAMS, max_overlap_distance=2000.0)
+    else:
+        # Преобразуем измеренные точки ссо стереосистемы в мировую систему координат
+        stereo_points_3d = H.dot(np.hstack((stereo_points_3d, np.ones((stereo_points_3d.shape[0], 1)))).T)
+        stereo_points_3d = stereo_points_3d[:3,:].T
 
     return phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2
 
 
-def draw_many_surfaces(ls_measures, phaso_measures, differences):
-    meas_count = len(ls_measures)
-
-    fig = plt.figure()
-
-    for i in range(meas_count):
-        phase_points = phaso_measures[i]
-        ls_sensor_points = ls_measures[i]
-        distance_errors = differences[i]
-
-        # Create a normalization object
-        norm = colors.Normalize(
-            vmin=np.min([np.min(ls_sensor_points[:,2]), np.min(phase_points[:,2])]), 
-            vmax=np.max([np.max(ls_sensor_points[:,2]), np.max(phase_points[:,2])])
-        )
-
-        ax = fig.add_subplot(meas_count, 3, 1 + i*3)
-        cs = ax.tricontourf(ls_sensor_points[:,0], ls_sensor_points[:,1], ls_sensor_points[:,2], cmap='jet', levels=40, norm=norm)
-        ax.set_xlabel('X, mm')
-        ax.set_ylabel('Y, mm')
-        cbar = fig.colorbar(cs, ax=ax)
-        cbar.ax.set_ylabel('Z, mm')
-        ax.invert_yaxis()
-        plt.grid()
-
-        ax2 = fig.add_subplot(meas_count, 3, 2 + i*3, sharex=ax, sharey=ax)
-        cs = plt.tricontourf(phase_points[:,0], phase_points[:,1], phase_points[:,2], cmap='jet', levels=40, norm=norm)
-        ax2.set_xlabel('X, mm')
-        ax2.set_ylabel('Y, mm')
-        cbar = fig.colorbar(cs, ax=ax2)
-        cbar.ax.set_ylabel('Z, mm')
-        plt.grid()
-
-        ax2 = fig.add_subplot(meas_count, 3, 3 + i*3, sharex=ax, sharey=ax)
-        cs = plt.tricontourf(distance_errors[:,0], distance_errors[:,1], distance_errors[:,2], cmap='jet', levels=40)
-        ax2.set_xlabel('X, mm')
-        ax2.set_ylabel('Y, mm')
-        cbar = fig.colorbar(cs)
-        cbar.ax.set_ylabel('dZ, mm')
-        plt.grid()
-
-    plt.show()
-
-
-if __name__ == '__main__':
-
-    PATH_TO_STEREO_MEASUREMENT = r'experimental_results\stereo5'
-
-    PATH_TO_PHASO_MEASUREMENT = r'experimental_results\2023-11-01'
-
-    PATH_TO_PHASO_CALIBRATION = r'experimental_results\calibrated_data_phase5.json'
-
+def compare_stereo():    
     path_to_phaso_date_folder = Path(PATH_TO_PHASO_MEASUREMENT)
+
     phaso_calibration = load_json_file(PATH_TO_PHASO_CALIBRATION)
 
     phaso_measurements_paths = []
@@ -200,9 +138,7 @@ if __name__ == '__main__':
 
     k = 0
 
-    # for i, (phaso_path, stereo_path)  in enumerate(zip(phaso_measurements_paths, stereo_measurements_paths)):
     for i in range(len(phaso_measurements_paths)):
-    
         stereo_path = stereo_measurements_paths[k]
 
         stereo_number = int(stereo_path.name.split('.')[0].split('_')[1])
@@ -212,10 +148,10 @@ if __name__ == '__main__':
 
         phaso_path = phaso_measurements_paths[i]
 
-        print(f'Обрабатываем поверхность {i+1} из {len(stereo_measurements_paths)}')
+        print(f'Обрабатываем поверхность {i+1} из {len(phaso_measurements_paths)}')
         
         try:
-            phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2 = compare_stereo(phaso_path, stereo_path, phaso_calibration)
+            phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2 = compare_stereo_pair(phaso_path, stereo_path, phaso_calibration)
 
             if stereo_points_3d is not None:
                 distance_errors = calculate_distance_difference(stereo_points_3d, phase_points_transformed)
@@ -236,24 +172,7 @@ if __name__ == '__main__':
                     distance_errors,
                 ])
 
-            # if len(reproj_errors1) > 3000 and np.std(reproj_errors1) < 1:
-            #     plt.hist(reproj_errors1)
-            #     plt.show()
-            #     ax = plt.subplot(121)
-            #     cs = plt.tricontourf(stereo_points_2d1[:,0], stereo_points_2d1[:,1], reproj_errors1, levels=40)
-            #     plt.colorbar(cs)
-            #     plt.xlim(0, 2048)
-            #     plt.ylim(0, 1536)
-            #     ax.invert_yaxis()
-            #     ax = plt.subplot(122)
-            #     cs = plt.tricontourf(stereo_points_2d2[:,0], stereo_points_2d2[:,1], reproj_errors2, levels=40)
-            #     plt.colorbar(cs)
-            #     plt.xlim(0, 2048)
-            #     plt.ylim(0, 1536)
-            #     ax.invert_yaxis()
-            #     plt.show()
-
-                draw_surface_by_contours(stereo_points_3d, phase_points_transformed, distance_errors)
+                # draw_surface_by_contours(stereo_points_3d, phase_points_transformed, distance_errors)
         except Exception as ex:
             print(ex)
             raise ex
@@ -276,7 +195,24 @@ if __name__ == '__main__':
         'distance_errors'
     ))
 
-    # df = df[(df.std_reproj1 < 1) & (df.std_reproj2 < 1)]
+    df.to_pickle(f'compare_stereo_{get_now_time()}.pickle')
 
-    df.distance_std.hist()
-    plt.show()
+
+if __name__ == '__main__':
+
+    PATH_TO_STEREO_MEASUREMENT = r'experimental_results\stereo5'
+
+    PATH_TO_PHASO_MEASUREMENT = r'experimental_results\2023-11-01'
+
+    PATH_TO_PHASO_CALIBRATION = r'experimental_results\calibrated_data_phase5.json'
+
+    INIT_PARAMS = (62.580111439506275, -11.976132973600278, -3.207140605473713, 496.319310041048, 1259.5447980833978, -480.61173541932527)
+
+    H = np.array([[   0.97670201,    0.05472822,   -0.20750422,  496.31931004],
+                  [  -0.20966734,    0.44948188,   -0.86833498, 1259.54479808],
+                  [   0.04574695,    0.89161139,    0.45048458, -480.61173542],
+                  [   0.,            0.,            0.,            1.,        ]])
+    
+    CALCULATE_ICP = False
+
+    compare_stereo()
