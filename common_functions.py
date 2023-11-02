@@ -63,7 +63,7 @@ def fit_to_plane(x, y, z):
     return fit
 
 
-def calculate_ICP(points1: np.ndarray, points2: np.ndarray, max_overlap_distance: float = 1000) -> Tuple[np.ndarray, np.ndarray]:
+def calculate_ICP(points1: np.ndarray, points2: np.ndarray, initial_params:Tuple[float] = None, max_overlap_distance: float = 1000):
     '''
     Calculate ICP for two point clouds
     '''
@@ -85,11 +85,13 @@ def calculate_ICP(points1: np.ndarray, points2: np.ndarray, max_overlap_distance
     # Create simpleICP object, add point clouds, and run algorithm!
     icp = SimpleICP()
     icp.add_point_clouds(pc_fix, pc_mov)
-    H, X_mov_transformed, rigid_body_transformation_params, distance_residuals = icp.run(max_overlap_distance=max_overlap_distance)
-    R = H[:3,:3]
-    t = H[:3,3].reshape((3,1))
 
-    return R, t, H
+    if initial_params is None:
+        initial_params = (0, 0, 0, 0, 0, 0)
+
+    H, X_mov_transformed, rigid_body_transformation_params, distance_residuals = icp.run(rbp_observed_values=initial_params, max_overlap_distance=max_overlap_distance)
+
+    return H, X_mov_transformed, rigid_body_transformation_params, distance_residuals
 
 
 def filter_outliers(data):
