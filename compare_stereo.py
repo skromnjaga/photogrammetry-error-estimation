@@ -66,6 +66,7 @@ def compare_stereo_pair(phaso_path, stereo_path, calibration_data):
     stereo_points_3d = np.array([[point[0], point[1], point[2]] for point in data['TriangulatedPointsArray']])
     reproj_errors1 = np.array([value for value in data['FirstImageReprojectionErrors']])
     reproj_errors2 = np.array([value for value in data['SecondImageReprojectionErrors']])
+    corelation_coef = np.array([value['CorrelationMaximum'] for value in data['CorrelationFieldResult']['CorrelationResultsRaw']])
 
     print(f'\nЗагружено {phase_points_3d.shape[0]} точек измерения фазограмметрической системы')
     phaso_std_rprj1 = np.std(phase_errors[:,0])
@@ -97,17 +98,18 @@ def compare_stereo_pair(phaso_path, stereo_path, calibration_data):
     phase_errors = phase_errors[filter_condition,:]
     print(f'{phase_points_transformed.shape[0]} точек после фильтрации...')
 
-    print('\nОтфильтровываем выбросы в стерео по величине ошибки репроекции...')
-    condition = (reproj_errors1 < 6*stero_std_rprj1) & (reproj_errors2 < 6*stero_std_rprj2)
-    stereo_points_2d1 = stereo_points_2d1[condition, :]
-    stereo_points_2d2 = stereo_points_2d2[condition, :]
-    stereo_points_3d = stereo_points_3d[condition, :]
-    reproj_errors1 = reproj_errors1[condition]
-    reproj_errors2 = reproj_errors2[condition]
-    print(f'{stereo_points_3d.shape[0]} точек после фильтрации...')
+    # print('\nОтфильтровываем выбросы в стерео по величине ошибки репроекции...')
+    # condition = (reproj_errors1 < 6*stero_std_rprj1) & (reproj_errors2 < 6*stero_std_rprj2)
+    # stereo_points_2d1 = stereo_points_2d1[condition, :]
+    # stereo_points_2d2 = stereo_points_2d2[condition, :]
+    # stereo_points_3d = stereo_points_3d[condition, :]
+    # reproj_errors1 = reproj_errors1[condition]
+    # reproj_errors2 = reproj_errors2[condition]
+    # corelation_coef = corelation_coef[condition]
+    # print(f'{stereo_points_3d.shape[0]} точек после фильтрации...')
 
     if len(stereo_points_3d) == 0:
-        return phase_points_transformed, phase_errors, None, reproj_errors1, reproj_errors2
+        return phase_points_transformed, phase_errors, None, reproj_errors1, reproj_errors2, corelation_coef
 
     if CALCULATE_ICP:
         _, stereo_points_3d, _, _ = calculate_ICP(phase_points_transformed, stereo_points_3d, initial_params=INIT_PARAMS, max_overlap_distance=2000.0)
@@ -116,7 +118,7 @@ def compare_stereo_pair(phaso_path, stereo_path, calibration_data):
         stereo_points_3d = H.dot(np.hstack((stereo_points_3d, np.ones((stereo_points_3d.shape[0], 1)))).T)
         stereo_points_3d = stereo_points_3d[:3,:].T
 
-    return phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2
+    return phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2, corelation_coef
 
 
 def compare_stereo():    
@@ -132,7 +134,7 @@ def compare_stereo():
 
     path_to_stereo_data_folder = Path(PATH_TO_STEREO_MEASUREMENT)
 
-    stereo_measurements_paths = list(path_to_stereo_data_folder.glob('result_*.json'))
+    stereo_measurements_paths = list(path_to_stereo_data_folder.glob('*result_*.json'))
 
     loaded_data = []
 
@@ -141,7 +143,7 @@ def compare_stereo():
     for i in range(len(phaso_measurements_paths)):
         stereo_path = stereo_measurements_paths[k]
 
-        stereo_number = int(stereo_path.name.split('.')[0].split('_')[1])
+        stereo_number = int(stereo_path.name.split('.')[0].split('_')[-1])
         if stereo_number != i:
             print(f'Не найден стерео результат #{i}, переходим к следующему...')
             continue
@@ -151,7 +153,7 @@ def compare_stereo():
         print(f'Обрабатываем поверхность {i+1} из {len(phaso_measurements_paths)}')
         
         try:
-            phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2 = compare_stereo_pair(phaso_path, stereo_path, phaso_calibration)
+            phase_points_transformed, phase_errors, stereo_points_3d, reproj_errors1, reproj_errors2, corelation_coef = compare_stereo_pair(phaso_path, stereo_path, phaso_calibration)
 
             if stereo_points_3d is not None:
                 distance_errors = calculate_distance_difference(stereo_points_3d, phase_points_transformed)
@@ -170,9 +172,11 @@ def compare_stereo():
                     reproj_errors1,
                     reproj_errors2,
                     distance_errors,
+                    corelation_coef
                 ])
 
-                # draw_surface_by_contours(stereo_points_3d, phase_points_transformed, distance_errors)
+                if DISPLAY_RESULT:
+                    draw_surface_by_contours(stereo_points_3d, phase_points_transformed, distance_errors)
         except Exception as ex:
             print(ex)
             raise ex
@@ -192,7 +196,8 @@ def compare_stereo():
         'stereo_points', 
         'reproj1', 
         'reproj2',
-        'distance_errors'
+        'distance_errors',
+        'corelation_coef'
     ))
 
     df.to_pickle(f'compare_stereo_{get_now_time()}.pickle')
@@ -200,18 +205,20 @@ def compare_stereo():
 
 if __name__ == '__main__':
 
-    PATH_TO_STEREO_MEASUREMENT = r'experimental_results\stereo5'
+    PATH_TO_STEREO_MEASUREMENT = r'experimental_results\stereo6'
 
     PATH_TO_PHASO_MEASUREMENT = r'experimental_results\2023-11-01'
 
     PATH_TO_PHASO_CALIBRATION = r'experimental_results\calibrated_data_phase5.json'
 
+    DISPLAY_RESULT = False
+
     INIT_PARAMS = (62.580111439506275, -11.976132973600278, -3.207140605473713, 496.319310041048, 1259.5447980833978, -480.61173541932527)
 
-    H = np.array([[   0.97670201,    0.05472822,   -0.20750422,  496.31931004],
-                  [  -0.20966734,    0.44948188,   -0.86833498, 1259.54479808],
-                  [   0.04574695,    0.89161139,    0.45048458, -480.61173542],
-                  [   0.,            0.,            0.,            1.,        ]])
+    H = np.array([[   0.97874203,    0.05184489,   -0.19843424,  485.96858166], 
+                  [  -0.20028031,    0.45001681,   -0.87027161, 1261.66161728], 
+                  [   0.04417961,    0.89151387,    0.45083388, -480.27422684], 
+                  [   0.,            0.,            0.,            1.        ]])
     
     CALCULATE_ICP = False
 
