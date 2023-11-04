@@ -40,7 +40,7 @@ def draw_surface_by_contours(ls_sensor_points, phase_points, distance_errors):
         ax2.set_xlabel('X, mm')
         ax2.set_ylabel('Y, mm')
         cbar = fig.colorbar(cs)
-        cbar.ax.set_ylabel('dZ, mm')
+        cbar.ax.set_ylabel(r'$\left| \Delta Z \right|$, mm')
         plt.grid()
 
     plt.show()
@@ -98,15 +98,15 @@ def compare_stereo_pair(phaso_path, stereo_path, calibration_data):
     phase_errors = phase_errors[filter_condition,:]
     print(f'{phase_points_transformed.shape[0]} точек после фильтрации...')
 
-    # print('\nОтфильтровываем выбросы в стерео по величине ошибки репроекции...')
-    # condition = (reproj_errors1 < 6*stero_std_rprj1) & (reproj_errors2 < 6*stero_std_rprj2)
-    # stereo_points_2d1 = stereo_points_2d1[condition, :]
-    # stereo_points_2d2 = stereo_points_2d2[condition, :]
-    # stereo_points_3d = stereo_points_3d[condition, :]
-    # reproj_errors1 = reproj_errors1[condition]
-    # reproj_errors2 = reproj_errors2[condition]
-    # corelation_coef = corelation_coef[condition]
-    # print(f'{stereo_points_3d.shape[0]} точек после фильтрации...')
+    print('\nОтфильтровываем выбросы в стерео по величине ошибки репроекции...')
+    condition = (reproj_errors1 < 6*stero_std_rprj1) & (reproj_errors2 < 6*stero_std_rprj2)
+    stereo_points_2d1 = stereo_points_2d1[condition, :]
+    stereo_points_2d2 = stereo_points_2d2[condition, :]
+    stereo_points_3d = stereo_points_3d[condition, :]
+    reproj_errors1 = reproj_errors1[condition]
+    reproj_errors2 = reproj_errors2[condition]
+    corelation_coef = corelation_coef[condition]
+    print(f'{stereo_points_3d.shape[0]} точек после фильтрации...')
 
     if len(stereo_points_3d) == 0:
         return phase_points_transformed, phase_errors, None, reproj_errors1, reproj_errors2, corelation_coef
@@ -147,6 +147,10 @@ def compare_stereo():
         if stereo_number != i:
             print(f'Не найден стерео результат #{i}, переходим к следующему...')
             continue
+
+        # if i != 105:
+        #     k = k + 1
+        #     continue
 
         phaso_path = phaso_measurements_paths[i]
 
@@ -211,14 +215,19 @@ if __name__ == '__main__':
 
     PATH_TO_PHASO_CALIBRATION = r'experimental_results\calibrated_data_phase5.json'
 
-    DISPLAY_RESULT = False
+    DISPLAY_RESULT = True
 
     INIT_PARAMS = (62.580111439506275, -11.976132973600278, -3.207140605473713, 496.319310041048, 1259.5447980833978, -480.61173541932527)
 
-    H = np.array([[   0.97874203,    0.05184489,   -0.19843424,  485.96858166], 
-                  [  -0.20028031,    0.45001681,   -0.87027161, 1261.66161728], 
-                  [   0.04417961,    0.89151387,    0.45083388, -480.27422684], 
-                  [   0.,            0.,            0.,            1.        ]])
+    # H = np.array([[   0.97874203,    0.05184489,   -0.19843424,  485.96858166], 
+    #               [  -0.20028031,    0.45001681,   -0.87027161, 1261.66161728], 
+    #               [   0.04417961,    0.89151387,    0.45083388, -480.27422684], 
+    #               [   0.,            0.,            0.,            1.        ]])
+    
+    H = np.array([[   0.97746751,    0.05496505,   -0.20380409,  490.35745832],
+                  [  -0.20647199,    0.44972616,   -0.86897394, 1254.726291  ],
+                  [   0.04389283,    0.89147363,    0.45094145, -480.39906827],
+                  [   0.,            0.,            0.,            1.      ]])
     
     CALCULATE_ICP = False
 

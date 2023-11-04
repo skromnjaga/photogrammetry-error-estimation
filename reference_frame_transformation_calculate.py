@@ -58,22 +58,25 @@ def calculate_transform_for_pair(phaso_path, stereo_path, calibration_data):
     print(f'{phase_points_transformed.shape[0]} точек после фильтрации...')
 
     print('\nОтфильтровываем выбросы в стерео по величине ошибки репроекции...')
-    condition = (reproj_errors1 < 6*stero_std_rprj1) & (reproj_errors2 < 6*stero_std_rprj2)
+    condition = (reproj_errors1 < 3*stero_std_rprj1) & (reproj_errors2 < 3*stero_std_rprj2)
     stereo_points_2d1 = stereo_points_2d1[condition, :]
     stereo_points_2d2 = stereo_points_2d2[condition, :]
     stereo_points_3d = stereo_points_3d[condition, :]
     reproj_errors1 = reproj_errors1[condition]
     reproj_errors2 = reproj_errors2[condition]
-    print(f'{stereo_points_3d.shape[0]} точек после фильтрации...')
+    print(f'{stereo_points_3d.shape[0]} точек после фильтрации c STD {np.std(reproj_errors1): .3f} и {np.std(reproj_errors2): .3f}...')
 
     if len(stereo_points_3d) == 0:
+        return None, None, stereo_points_3d.shape[0]
+    
+    if np.std(reproj_errors1) > 0.6 or np.std(reproj_errors2) > 0.6:
         return None, None, stereo_points_3d.shape[0]
 
     _, _, params, residuals = calculate_ICP(
         phase_points_transformed,
         stereo_points_3d,
         initial_params=INIT_PARAMS,
-        max_overlap_distance=20000.0
+        max_overlap_distance=5000.0
     )
 
     return params, residuals, stereo_points_3d.shape[0]
@@ -91,7 +94,7 @@ def calculate_reference_frame_transform():
 
     path_to_stereo_data_folder = Path(PATH_TO_STEREO_MEASUREMENT)
 
-    stereo_measurements_paths = list(path_to_stereo_data_folder.glob('result_*.json'))
+    stereo_measurements_paths = list(path_to_stereo_data_folder.glob('*result_*.json'))
 
     loaded_data = []
 
@@ -100,7 +103,7 @@ def calculate_reference_frame_transform():
     for i in range(len(phaso_measurements_paths)):
         stereo_path = stereo_measurements_paths[k]
 
-        stereo_number = int(stereo_path.name.split('.')[0].split('_')[1])
+        stereo_number = int(stereo_path.name.split('.')[0].split('_')[-1])
         if stereo_number != i:
             print(f'Не найден стерео результат #{i}, переходим к следующему...')
             continue
@@ -159,7 +162,7 @@ def calculate_reference_frame_transform():
 
 if __name__ == '__main__':
 
-    PATH_TO_STEREO_MEASUREMENT = r'experimental_results\stereo5'
+    PATH_TO_STEREO_MEASUREMENT = r'experimental_results\stereo6'
 
     PATH_TO_PHASO_MEASUREMENT = r'experimental_results\2023-11-01'
 

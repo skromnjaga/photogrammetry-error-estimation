@@ -38,7 +38,13 @@ def euler_angles_to_rotation_matrix(
     return R
 
 
-df = pd.read_pickle('reference_calculation_results_2023-11-02_14-07-29.pickle')
+df = pd.read_pickle('reference_calculation_results_2023-11-04_15-26-58.pickle')
+print(f'Загружено {df.shape[0]} измерений, невязка min - {df.std_residuals.min()}, max - {df.std_residuals.max()}, std - {df.std_residuals.std()}')
+
+print(f'Фильтруем по величине невязки')
+df = df[df.std_residuals < 0.2]
+print(f'Осталось {df.shape[0]} измерений')
+# print(f'Максимальная невязка {df.std_residuals.iloc[-1]: .3f}, {df.stereo_std_reproj2.iloc[-1]: .3f}')
 
 df_filtered = df.sort_values('std_residuals')[:100]
 
